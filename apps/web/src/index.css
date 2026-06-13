@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-porcelain font-sans text-ink-900 antialiased;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-verity-500 ring-offset-2 ring-offset-porcelain;
+  }
+}
+
+@layer components {
+  .label {
+    @apply block text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-500;
+  }
+
+  .field {
+    @apply w-full rounded-lg border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 placeholder:text-ink-300 focus:border-verity-500 focus:outline-none focus:ring-1 focus:ring-verity-500;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-verity-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-verity-700 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-ink-200 bg-white px-4 py-2.5 text-sm font-semibold text-ink-700 transition-colors hover:border-ink-300 hover:bg-ink-50;
+  }
+
+  .error-note {
+    @apply rounded-lg border border-verdict-mismatch/30 bg-verdict-mismatch/5 px-3.5 py-2.5 text-sm text-verdict-mismatch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-wavebar {
+    animation: none !important;
+  }
+}

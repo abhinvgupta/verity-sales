@@ -1,0 +1,18 @@
+# Rebuild deps and compiled output inside the image; never copy host artifacts.
+**/node_modules
+**/dist
+**/.turbo
+**/coverage
+.turbo
+
+# Secrets — env is injected at runtime via compose, not baked into the image.
+.env
+**/.env
+**/.env.local
+
+# VCS / tooling / local noise
+.git
+.gitignore
+**/*.log
+**/.DS_Store
+docs
