@@ -1,16 +1,22 @@
-# Local backend stack: HTTP API + queue worker, backed by MongoDB and Redis.
+# Base backend stack: HTTP API + queue worker, backed by Redis.
 #
-#   docker compose up --build
+# This file is ENVIRONMENT-AGNOSTIC. It defines the services, the image build,
+# and the infra (Redis) that is identical everywhere. Anything that differs per
+# environment — NODE_ENV, the Mongo connection, published host ports — lives in
+# an overlay file that is merged on top:
+#
+#   Local dev:  docker compose up --build
+#               (Compose auto-merges docker-compose.override.yml)
+#
+#   Staging:    docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build
 #
 # The api and worker run the SAME image (built once) with different commands.
-# Secrets (JWT, AWS, OpenAI) come from apps/api/.env via env_file; the
-# infra hostnames below override that file to point at the compose services.
+# Secrets (JWT, AWS, OpenAI) come from apps/api/.env via env_file.
 
+# Infra values that are the same in every environment. Mongo and NODE_ENV are
+# intentionally NOT here — the overlay files supply those.
 x-backend-env: &backend-env
-  NODE_ENV: production
   PORT: 3000
-  # Mongo runs on the host (Mac), not in compose — reach it via host.docker.internal.
-  MONGODB_URI: mongodb://host.docker.internal:27017/verity
   REDIS_HOST: redis
   REDIS_PORT: 6379
 
@@ -39,14 +45,18 @@ services:
       - apps/api/.env
     environment:
       <<: *backend-env
-    ports:
-      - "3000:3000"
     depends_on:
       redis:
         condition: service_healthy
 
   worker:
-    # Reuses the image built by the api service — no second build.
+    # Same image as api. Declaring an identical build here (rather than relying
+    # on api having built it first) means a fresh host can BUILD the image
+    # instead of trying to pull the nonexistent `verity-backend` from a registry.
+    # Identical context + Dockerfile + tag → this is a cache hit, not a 2nd build.
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
     image: verity-backend
     restart: unless-stopped
     command: ["node", "dist/main.worker.js"]

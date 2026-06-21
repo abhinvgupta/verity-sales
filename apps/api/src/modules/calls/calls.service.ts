@@ -6,11 +6,11 @@ import {
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { JobsOptions, Queue } from 'bullmq';
-import { randomUUID } from 'node:crypto';
+import { Types } from 'mongoose';
 import { CallStatus, PaginationMeta, QUEUES } from '@verity/shared';
 import { CallDocument } from '../../database/schemas';
 import { StorageService } from '../storage/storage.service';
-import { CallsRepository, CallListItem } from './calls.repository';
+import { CallsRepository } from './calls.repository';
 import { CreateCallDto } from './dto/create-call.dto';
 import { ListCallsDto } from './dto/list-calls.dto';
 
@@ -38,10 +38,10 @@ export class CallsService {
    * enqueues the analysis job. Never calls the LLM synchronously.
    */
   async create(companyId: string, dto: CreateCallDto): Promise<CallDocument> {
-    const callId = randomUUID();
+    const callId = new Types.ObjectId();
     const key = this.storageService.getTranscriptKey(
       companyId,
-      callId,
+      callId.toString(),
       'transcript.txt',
     );
 
@@ -57,11 +57,11 @@ export class CallsService {
 
     await this.analyzeQueue.add(
       QUEUES.ANALYZE_CALL,
-      { callId, companyId },
+      { callId: callId.toString(), companyId },
       ANALYZE_JOB_OPTS,
     );
 
-    this.logger.log(`Call ${callId} created and queued for analysis`);
+    this.logger.log(`Call ${callId.toString()} created and queued for analysis`);
     return call;
   }
 
@@ -92,14 +92,13 @@ export class CallsService {
     return updated;
   }
 
-  /**
-   * Returns a paginated, filterable list of calls scoped to the company,
-   * enriched with each call's analysis score and rep name.
-   */
+  /** Returns a paginated, filterable list of calls scoped to the company. */
   findAll(
     companyId: string,
     query: ListCallsDto,
-  ): Promise<{ data: CallListItem[]; meta: PaginationMeta }> {
+  ): Promise<{ data: CallDocument[]; meta: PaginationMeta }> {
+    console.log(companyId, typeof companyId)
+    console.log(query, typeof query)
     return this.callsRepo.findAll(companyId, query);
   }
 

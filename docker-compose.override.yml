@@ -1,0 +1,23 @@
+# Local dev overlay — merged on top of docker-compose.yml AUTOMATICALLY by
+# `docker compose up` (no -f flags needed). Do not load this in staging/prod.
+#
+# What's dev-specific here:
+#   - NODE_ENV=development
+#   - Mongo runs on the host Mac (not in compose) → host.docker.internal
+#   - the API port is published to localhost so you can hit it from the browser
+
+x-dev-env: &dev-env
+  NODE_ENV: development
+  # Mongo runs on the host (Mac), not in compose — reach it via host.docker.internal.
+  MONGODB_URI: mongodb://host.docker.internal:27017/verity
+
+services:
+  api:
+    environment:
+      <<: *dev-env
+    ports:
+      - "3000:3000"
+
+  worker:
+    environment:
+      <<: *dev-env

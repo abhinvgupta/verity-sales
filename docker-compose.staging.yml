@@ -1,0 +1,29 @@
+# Staging overlay — NOT auto-loaded. Run explicitly:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build
+#
+# What's staging-specific here:
+#   - NODE_ENV=production
+#
+# Everything else — MONGODB_URI, JWT/AWS/OpenAI secrets — comes from
+# apps/api/.env on the staging host. That file is per-machine and gitignored, so
+# the staging box simply has its own .env with the managed-Mongo URI. We do NOT
+# set MONGODB_URI here: a value under `environment:` would override env_file and
+# shadow the .env.
+#
+# If you'd rather NOT publish the API port directly (e.g. it sits behind nginx
+# or an ALB), delete the `ports:` block below and route through the proxy.
+
+x-staging-env: &staging-env
+  NODE_ENV: production
+
+services:
+  api:
+    environment:
+      <<: *staging-env
+    ports:
+      - "3000:3000"
+
+  worker:
+    environment:
+      <<: *staging-env
