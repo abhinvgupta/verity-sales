@@ -39,11 +39,29 @@ services:
       timeout: 5s
       retries: 5
 
+  # Public entrypoint + automatic HTTPS. Caddy terminates TLS and reverse-proxies
+  # to the api over the internal compose network, so api is NOT published.
+  # The domain comes from SITE_ADDRESS in apps/api/.env and must have a DNS
+  # A record pointing at this host for Caddy to obtain a Let's Encrypt cert.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    env_file:
+      - apps/api/.env
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+
   api:
     environment:
       <<: *staging-env
-    ports:
-      - "3000:3000"
+    # No host port: Caddy reaches api at api:3000 over the compose network.
     depends_on:
       mongo:
         condition: service_healthy
@@ -57,3 +75,5 @@ services:
 
 volumes:
   mongo-data:
+  caddy-data: # ACME certs/keys — persist so Caddy doesn't re-issue on every redeploy
+  caddy-config:
