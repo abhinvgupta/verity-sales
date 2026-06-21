@@ -2,10 +2,17 @@ import axios from 'axios';
 import { useAuthStore } from '../store/auth';
 
 /**
- * Axios instance for the Verity API. In dev, requests to /api are forwarded to
- * the backend by the Vite proxy (see vite.config.ts), avoiding CORS.
+ * Axios instance for the Verity API.
+ *
+ * - Dev: VITE_API_URL is unset, so baseURL is the relative '/api', which the
+ *   Vite proxy (see vite.config.ts) forwards to the backend, avoiding CORS.
+ * - Deployed (e.g. Vercel): set VITE_API_URL to the backend's public base,
+ *   including the '/api' prefix — e.g. https://staging.verity.example.com/api.
+ *   Note: Vite inlines this at BUILD time, so changing it needs a rebuild.
  */
-export const apiClient = axios.create({ baseURL: '/api' });
+export const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || '/api',
+});
 
 // Attach the bearer token to every request.
 apiClient.interceptors.request.use((config) => {
