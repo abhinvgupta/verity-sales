@@ -4,12 +4,17 @@
 #
 # What's staging-specific here:
 #   - NODE_ENV=production
+#   - Mongo runs as a CONTAINER here (unlike dev, which uses the host Mac),
+#     with a named volume so data survives `down`/redeploys.
 #
-# Everything else — MONGODB_URI, JWT/AWS/OpenAI secrets — comes from
-# apps/api/.env on the staging host. That file is per-machine and gitignored, so
-# the staging box simply has its own .env with the managed-Mongo URI. We do NOT
-# set MONGODB_URI here: a value under `environment:` would override env_file and
-# shadow the .env.
+# Secrets and connection strings come from apps/api/.env on the staging host
+# (per-machine, gitignored). That file must define:
+#   MONGODB_URI=mongodb://<user>:<pass>@mongo:27017/verity?authSource=admin
+#   MONGO_INITDB_ROOT_USERNAME=<user>
+#   MONGO_INITDB_ROOT_PASSWORD=<pass>
+# The host in MONGODB_URI is `mongo` — the compose service name below, resolved
+# over the compose network. We do NOT set MONGODB_URI under `environment:` here:
+# that would override env_file and shadow the .env.
 #
 # If you'd rather NOT publish the API port directly (e.g. it sits behind nginx
 # or an ALB), delete the `ports:` block below and route through the proxy.
@@ -18,12 +23,37 @@ x-staging-env: &staging-env
   NODE_ENV: production
 
 services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    # Reads MONGO_INITDB_ROOT_USERNAME / _PASSWORD from the same .env as the app;
+    # the other app vars in that file are simply ignored by the mongo image.
+    env_file:
+      - apps/api/.env
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      # `ping` needs no auth, so this works before/independent of credentials.
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api:
     environment:
       <<: *staging-env
     ports:
       - "3000:3000"
+    depends_on:
+      mongo:
+        condition: service_healthy
 
   worker:
     environment:
       <<: *staging-env
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  mongo-data:

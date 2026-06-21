@@ -6,11 +6,11 @@ import {
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { JobsOptions, Queue } from 'bullmq';
-import { Types } from 'mongoose';
+import { randomUUID } from 'node:crypto';
 import { CallStatus, PaginationMeta, QUEUES } from '@verity/shared';
 import { CallDocument } from '../../database/schemas';
 import { StorageService } from '../storage/storage.service';
-import { CallsRepository } from './calls.repository';
+import { CallListItem, CallsRepository } from './calls.repository';
 import { CreateCallDto } from './dto/create-call.dto';
 import { ListCallsDto } from './dto/list-calls.dto';
 
@@ -38,10 +38,10 @@ export class CallsService {
    * enqueues the analysis job. Never calls the LLM synchronously.
    */
   async create(companyId: string, dto: CreateCallDto): Promise<CallDocument> {
-    const callId = new Types.ObjectId();
+    const callId = randomUUID();
     const key = this.storageService.getTranscriptKey(
       companyId,
-      callId.toString(),
+      callId,
       'transcript.txt',
     );
 
@@ -57,11 +57,11 @@ export class CallsService {
 
     await this.analyzeQueue.add(
       QUEUES.ANALYZE_CALL,
-      { callId: callId.toString(), companyId },
+      { callId, companyId },
       ANALYZE_JOB_OPTS,
     );
 
-    this.logger.log(`Call ${callId.toString()} created and queued for analysis`);
+    this.logger.log(`Call ${callId} created and queued for analysis`);
     return call;
   }
 
@@ -96,9 +96,7 @@ export class CallsService {
   findAll(
     companyId: string,
     query: ListCallsDto,
-  ): Promise<{ data: CallDocument[]; meta: PaginationMeta }> {
-    console.log(companyId, typeof companyId)
-    console.log(query, typeof query)
+  ): Promise<{ data: CallListItem[]; meta: PaginationMeta }> {
     return this.callsRepo.findAll(companyId, query);
   }
 
